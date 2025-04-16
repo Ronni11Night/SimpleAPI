@@ -1,81 +1,91 @@
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
-namespace SimpleApi.Controllers
+namespace SimpleAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UsersController : ControllerBase
+    public class UserController : ControllerBase
     {
-        // Example in-memory storage for users
-        private static List<User> users = new List<User>
-        {
-            new User { Id = 1, Name = "John Doe", Email = "john@example.com" }
-        };
+        private readonly ILogger<UserController> _logger;
+        private static List<User> Users = new List<User>();
 
-        // GET: api/users
-        [HttpGet]
-        public IActionResult GetUsers()
+        public UserController(ILogger<UserController> logger)
         {
-            return Ok(users);
+            _logger = logger;
         }
 
-        // GET: api/users/5
-        [HttpGet("{id}")]
-        public IActionResult GetUser(int id)
+        // GET api/user
+        [HttpGet]
+        public ActionResult<IEnumerable<User>> Get()
         {
-            var user = users.Find(u => u.Id == id);
+            _logger.LogInformation("Fetching all users.");
+            return Ok(Users);
+        }
+
+        // GET api/user/5
+        [HttpGet("{id}")]
+        public ActionResult<User> Get(int id)
+        {
+            var user = Users.FirstOrDefault(u => u.Id == id);
             if (user == null)
             {
+                _logger.LogWarning("User with ID {Id} not found.", id);
                 return NotFound();
             }
             return Ok(user);
         }
 
-        // POST: api/users
+        // POST api/user
         [HttpPost]
-        public IActionResult CreateUser([FromBody] User newUser)
+        public ActionResult Post([FromBody] User newUser)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest("Invalid data.");
             }
 
-            newUser.Id = users.Count + 1; // simple way to assign an ID
-            users.Add(newUser);
-            return CreatedAtAction(nameof(GetUser), new { id = newUser.Id }, newUser);
+            newUser.Id = Users.Count + 1;
+            Users.Add(newUser);
+            _logger.LogInformation("Added new user with ID {Id}.", newUser.Id);
+            return CreatedAtAction(nameof(Get), new { id = newUser.Id }, newUser);
         }
 
-        // PUT: api/users/5
+        // PUT api/user/5
         [HttpPut("{id}")]
-        public IActionResult UpdateUser(int id, [FromBody] User updatedUser)
+        public ActionResult Put(int id, [FromBody] User updatedUser)
         {
-            var user = users.Find(u => u.Id == id);
-            if (user == null)
+            var existingUser = Users.FirstOrDefault(u => u.Id == id);
+            if (existingUser == null)
             {
+                _logger.LogWarning("User with ID {Id} not found for update.", id);
                 return NotFound();
             }
 
-            user.Name = updatedUser.Name;
-            user.Email = updatedUser.Email;
+            existingUser.Name = updatedUser.Name;
+            existingUser.Email = updatedUser.Email;
+            _logger.LogInformation("Updated user with ID {Id}.", id);
             return NoContent();
         }
 
-        // DELETE: api/users/5
+        // DELETE api/user/5
         [HttpDelete("{id}")]
-        public IActionResult DeleteUser(int id)
+        public ActionResult Delete(int id)
         {
-            var user = users.Find(u => u.Id == id);
+            var user = Users.FirstOrDefault(u => u.Id == id);
             if (user == null)
             {
+                _logger.LogWarning("User with ID {Id} not found for deletion.", id);
                 return NotFound();
             }
 
-            users.Remove(user);
+            Users.Remove(user);
+            _logger.LogInformation("Deleted user with ID {Id}.", id);
             return NoContent();
         }
     }
 
+    // User model
     public class User
     {
         public int Id { get; set; }
